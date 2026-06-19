@@ -347,6 +347,18 @@ def main():
             cv2.rectangle(preview, (left, top), (right, bottom), color, 2)
             cv2.putText(preview, name, (left, top - 8),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.7, color, 2)
+            if name == "verify_check":
+                cx, cy = (left + right) // 2, (top + bottom) // 2
+                actual_bgr = frame[cy, cx]
+                swatch_x = right + 10
+                target_bgr = (65, 109, 175)
+                cv2.rectangle(preview, (swatch_x, top), (swatch_x + 60, top + 30), target_bgr, -1)
+                cv2.putText(preview, "target", (swatch_x, top - 5),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+                cv2.rectangle(preview, (swatch_x, top + 35), (swatch_x + 60, top + 65),
+                              (int(actual_bgr[0]), int(actual_bgr[1]), int(actual_bgr[2])), -1)
+                cv2.putText(preview, "actual", (swatch_x, top + 80),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
         rgb = cv2.cvtColor(preview, cv2.COLOR_BGR2RGB)
         h, w, ch = rgb.shape
         qimg = QImage(rgb.data, w, h, ch * w, QImage.Format.Format_RGB888)
