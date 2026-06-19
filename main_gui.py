@@ -47,14 +47,6 @@ from PyQt6.QtWidgets import QApplication
 from PyQt6.QtCore import QThread, pyqtSignal
 from PyQt6.QtGui import QImage, QPixmap
 import pydirectinput
-from colormath.color_objects import sRGBColor, LabColor
-from colormath.color_diff import delta_e_cie2000
-from colormath.color_conversions import convert_color
-
-def patch_asscalar(a):
-    return a.item()
-
-setattr(numpy, "asscalar", patch_asscalar)
 
 def is_admin():
     """检查是否以管理员权限运行"""
@@ -130,33 +122,6 @@ class ScriptThread(QThread):
         left, top, right, bottom = region
         return frame[top:bottom, left:right]
 
-    def verify_window(self) -> bool:
-        """检查确认按钮区域的颜色是否变化"""
-        frame = self.win_cap.capture()
-        while frame is None or frame.size == 0:
-            time.sleep(0.05)
-            frame = self.win_cap.capture()
-        region = self.selector.get_region("verify_check")
-        # 获取区域中心颜色
-        color_tmp = frame[((region[1] + region[3]) // 2), ((region[0] + region[2]) // 2)]
-        center_color = convert_color(
-            sRGBColor(color_tmp[2], color_tmp[1], color_tmp[0]),  # BGR to sRGB
-            LabColor
-        )
-        # 预设的确认按钮中心颜色 (BGR)
-        target_color = convert_color(
-            sRGBColor(175, 109, 65),  # BGR：适用于金色砖皮
-            LabColor
-        )
-        # 计算颜色差异
-        delta_e = delta_e_cie2000(center_color, target_color)
-        # 色差小说明显示了确认窗口
-        self.status_updated.emit(f"颜色：{color_tmp[2], color_tmp[1], color_tmp[0]}")
-        self.status_updated.emit(f"色差: {delta_e}")
-        if delta_e < 80:
-            return True
-        return False
-
     def ocr_region(self, region):
         """OCR 识别"""
         frame = self.win_cap.capture()
@@ -211,30 +176,17 @@ class ScriptThread(QThread):
                     if minutes == 0 and seconds == 1:
                         self.status_updated.emit("准备点击...")
                         time.sleep(self.config['buy_click_delay'])
-                        # 点击购买按钮
-                        click_region_center(buy_region, interval=0)
-                        # 校验点击是否成功（可能造成延迟）
-                        buy_count = 0
-                        while not self.verify_window() and buy_count < 5:
-                            buy_count += 1
-                            if buy_count <= 2:
-                                time.sleep(self.config['buy_interval'])
-                                click_region_center(buy_region, interval=0)
+                        self.status_updated.emit(f"连续点击购买 {self.config['buy_clicks']} 次...")
+                        for _ in range(self.config['buy_clicks']):
+                            click_region_center(buy_region, interval=0)
+                            time.sleep(self.config['buy_interval'])
                         time.sleep(self.config['buy_to_verify_delay'])
-                        # 点击确认按钮
-                        click_region_center(verify_region, interval=self.config['verify_interval'])
-                        self.status_updated.emit("点击确认按钮...")
-                        # 校验点到了确认
-                        verify_counter = 0
-                        while self.verify_window():
-                            verify_counter += 1
-                            if verify_counter > 2:
-                                pydirectinput.click(1, 1, interval=0.1)
-                            click_region_center(verify_region, interval=self.config['verify_interval'])
-                        
-                        self.status_updated.emit("等待刷新...")
+                        self.status_updated.emit(f"连续点击确认 {self.config['verify_clicks']} 次...")
+                        for _ in range(self.config['verify_clicks']):
+                            click_region_center(verify_region, interval=0)
+                            time.sleep(self.config['verify_interval'])
+                        self.status_updated.emit("等待结算...")
                         time.sleep(1.5)
-                        if self.verify_window(): pydirectinput.press('esc')
                         click_region_center(refresh_region)
                         # 检查三角币是否变化
                         now_money = self.ocr_region(money_region)
@@ -339,7 +291,6 @@ def main():
             "verify": (0, 165, 255),
             "refresh": (255, 0, 0),
             "money": (255, 0, 255),
-            "verify_check": (0, 255, 255),
         }
         for name, region in selector.get_all_regions().items():
             left, top, right, bottom = region
@@ -347,25 +298,13 @@ def main():
             cv2.rectangle(preview, (left, top), (right, bottom), color, 2)
             cv2.putText(preview, name, (left, top - 8),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.7, color, 2)
-            if name == "verify_check":
-                cx, cy = (left + right) // 2, (top + bottom) // 2
-                actual_bgr = frame[cy, cx]
-                swatch_x = right + 10
-                target_bgr = (65, 109, 175)
-                cv2.rectangle(preview, (swatch_x, top), (swatch_x + 60, top + 30), target_bgr, -1)
-                cv2.putText(preview, "target", (swatch_x, top - 5),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
-                cv2.rectangle(preview, (swatch_x, top + 35), (swatch_x + 60, top + 65),
-                              (int(actual_bgr[0]), int(actual_bgr[1]), int(actual_bgr[2])), -1)
-                cv2.putText(preview, "actual", (swatch_x, top + 80),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
         rgb = cv2.cvtColor(preview, cv2.COLOR_BGR2RGB)
         h, w, ch = rgb.shape
         qimg = QImage(rgb.data, w, h, ch * w, QImage.Format.Format_RGB888)
         window.show_preview(QPixmap.fromImage(qimg))
 
     def on_redraw(name):
-        all_names = ["time", "buy", "verify", "refresh", "money", "verify_check"]
+        all_names = ["time", "buy", "verify", "refresh", "money"]
         targets = all_names if name == "__all__" else [name]
         win_cap.stop()
         del win_cap.camera

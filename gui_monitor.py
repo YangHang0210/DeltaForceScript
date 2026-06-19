@@ -45,7 +45,9 @@ class MonitorWindow(QMainWindow):
         self.buy_click_delay = 0.50  # 购买点击延迟（秒）
         self.buy_to_verify_delay = 0.0  # 购买到确认的延迟（秒）
         self.buy_interval = 0.05  # 购买按钮点击间隔（秒）
+        self.buy_clicks = 5  # 购买按钮连续点击次数
         self.verify_interval = 0.05  # 确认按钮点击间隔（秒）
+        self.verify_clicks = 8  # 确认按钮连续点击次数
         self.ocr_interval = 0.95  # OCR识别间隔（time >= 5）（秒）
         self.continue_after_complete = True  # 任务完成后继续运行
         self.click_refresh_at_3s = True  # 3秒时点击刷新按钮
@@ -223,6 +225,38 @@ class MonitorWindow(QMainWindow):
         verify_interval_layout.addWidget(self.verify_interval_spin)
         verify_interval_layout.addStretch()
         config_layout.addLayout(verify_interval_layout)
+        
+        # 购买连续点击次数
+        buy_clicks_layout = QHBoxLayout()
+        buy_clicks_label = QLabel("购买点击次数:")
+        buy_clicks_label.setFont(QFont("微软雅黑", 10))
+        buy_clicks_label.setFixedWidth(120)
+        self.buy_clicks_spin = QSpinBox()
+        self.buy_clicks_spin.setRange(1, 30)
+        self.buy_clicks_spin.setValue(self.buy_clicks)
+        self.buy_clicks_spin.setSuffix(" 次")
+        self.buy_clicks_spin.setFont(QFont("微软雅黑", 10))
+        self.buy_clicks_spin.valueChanged.connect(self.on_buy_clicks_changed)
+        buy_clicks_layout.addWidget(buy_clicks_label)
+        buy_clicks_layout.addWidget(self.buy_clicks_spin)
+        buy_clicks_layout.addStretch()
+        config_layout.addLayout(buy_clicks_layout)
+        
+        # 确认连续点击次数
+        verify_clicks_layout = QHBoxLayout()
+        verify_clicks_label = QLabel("确认点击次数:")
+        verify_clicks_label.setFont(QFont("微软雅黑", 10))
+        verify_clicks_label.setFixedWidth(120)
+        self.verify_clicks_spin = QSpinBox()
+        self.verify_clicks_spin.setRange(1, 30)
+        self.verify_clicks_spin.setValue(self.verify_clicks)
+        self.verify_clicks_spin.setSuffix(" 次")
+        self.verify_clicks_spin.setFont(QFont("微软雅黑", 10))
+        self.verify_clicks_spin.valueChanged.connect(self.on_verify_clicks_changed)
+        verify_clicks_layout.addWidget(verify_clicks_label)
+        verify_clicks_layout.addWidget(self.verify_clicks_spin)
+        verify_clicks_layout.addStretch()
+        config_layout.addLayout(verify_clicks_layout)
         
         # OCR识别间隔
         ocr_interval_layout = QHBoxLayout()
@@ -487,6 +521,16 @@ class MonitorWindow(QMainWindow):
         self.verify_interval = value
         self.add_log(f"⚙️ 确认点击间隔已设置为: {value}秒")
     
+    def on_buy_clicks_changed(self, value):
+        """购买点击次数变更"""
+        self.buy_clicks = value
+        self.add_log(f"⚙️ 购买点击次数已设置为: {value}次")
+
+    def on_verify_clicks_changed(self, value):
+        """确认点击次数变更"""
+        self.verify_clicks = value
+        self.add_log(f"⚙️ 确认点击次数已设置为: {value}次")
+
     def on_ocr_interval_changed(self, value):
         """OCR识别间隔变更"""
         self.ocr_interval = value
@@ -510,7 +554,9 @@ class MonitorWindow(QMainWindow):
             'buy_click_delay': self.buy_click_delay,
             'buy_to_verify_delay': self.buy_to_verify_delay,
             'buy_interval': self.buy_interval,
+            'buy_clicks': self.buy_clicks,
             'verify_interval': self.verify_interval,
+            'verify_clicks': self.verify_clicks,
             'ocr_interval': self.ocr_interval,
             'continue_after_complete': self.continue_after_complete,
             'click_refresh_at_3s': self.click_refresh_at_3s
@@ -577,7 +623,7 @@ class MonitorWindow(QMainWindow):
 
     def on_redraw_clicked(self):
         """重画区域按钮点击"""
-        region_names = ["time", "buy", "verify", "refresh", "money", "verify_check"]
+        region_names = ["time", "buy", "verify", "refresh", "money"]
         dialog = QDialog(self)
         dialog.setWindowTitle("选择要重画的区域")
         layout = QVBoxLayout(dialog)
