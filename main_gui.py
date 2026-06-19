@@ -190,7 +190,10 @@ class ScriptThread(QThread):
                 while self.is_paused: time.sleep(0.2); continue
                 # 截图并OCR识别时间
                 res = self.ocr_region(time_region)
-                if "天" in res or "小时" in res: click_region_center(refresh_region); continue
+                if "天" in res or "小时" in res:
+                    click_region_center(refresh_region)
+                    time.sleep(self.config['ocr_interval'])
+                    continue
                 match = pattern.search(res)
                 if match:
                     minutes = int(match.group(1))
