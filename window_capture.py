@@ -24,7 +24,7 @@ def enum_windows_with_title():
     return windows
 
 class WindowCapture():
-    def __init__(self, device_idx: int = 0, output_idx: int = 0, target_fps: int = 500, max_buffer_len: int = 8):
+    def __init__(self, device_idx: int = 0, output_idx: int = 0, target_fps: int = 30, max_buffer_len: int = 8):
         """初始化窗口捕获
         
         Args:
