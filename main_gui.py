@@ -303,38 +303,11 @@ def main():
         qimg = QImage(rgb.data, w, h, ch * w, QImage.Format.Format_RGB888)
         window.show_preview(QPixmap.fromImage(qimg))
 
-    def on_redraw(name):
-        all_names = ["time", "buy", "verify", "refresh", "money"]
-        targets = all_names if name == "__all__" else [name]
-        win_cap.stop()
-        del win_cap.camera
-        window.showMinimized()
-        app.processEvents()
-        time.sleep(0.3)
-        for region_name in targets:
-            try:
-                selector.select_region(region_name)
-                window.add_log(f"✓ 区域 '{region_name}' 已更新: {selector.get_region(region_name)}")
-            except ValueError:
-                window.add_log(f"✗ 跳过区域 '{region_name}'")
-        selector.save_regions_to_file("regions_2k.json")
-        import dxcam
-        win_cap.camera = dxcam.create(
-            device_idx=win_cap.device_idx,
-            output_idx=win_cap.output_idx,
-            output_color="BGR",
-            max_buffer_len=2,
-        )
-        window.showNormal()
-        window.activateWindow()
-        window.add_log("✏ 区域配置已保存到 regions_2k.json")
-
     window.controller.start_requested.connect(on_start)
     window.controller.pause_requested.connect(on_pause)
     window.controller.resume_requested.connect(on_resume)
     window.controller.stop_requested.connect(on_stop)
     window.controller.preview_requested.connect(on_preview)
-    window.controller.redraw_requested.connect(on_redraw)
     
     def cleanup():
         if script_thread and script_thread.isRunning():
