@@ -9,6 +9,8 @@ import sys
 import re
 import time
 import ctypes
+import logging
+from datetime import datetime
 
 try:
     ctypes.windll.shcore.SetProcessDpiAwareness(2)
@@ -17,6 +19,22 @@ except Exception:
         ctypes.windll.user32.SetProcessDPIAware()
     except Exception:
         pass
+
+_log_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs")
+os.makedirs(_log_dir, exist_ok=True)
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+    handlers=[
+        logging.FileHandler(
+            os.path.join(_log_dir, f"{datetime.now().strftime('%Y-%m-%d')}.log"),
+            encoding="utf-8",
+        ),
+        logging.StreamHandler(sys.stdout),
+    ],
+)
+logger = logging.getLogger(__name__)
 
 from window_capture import *
 from region_selector import RegionSelector
@@ -47,7 +65,7 @@ def is_admin():
 def run_as_admin():
     """以管理员权限重新启动程序"""
     if not is_admin():
-        print("正在请求管理员权限...")
+        logger.info("正在请求管理员权限...")
         # 获取当前脚本路径
         script = os.path.abspath(sys.argv[0])
         params = ' '.join([script] + sys.argv[1:])
@@ -60,7 +78,7 @@ def run_as_admin():
         if ret > 32:  # 成功
             sys.exit(0)
         else:
-            print("未获得管理员权限，继续以普通权限运行")
+            logger.warning("未获得管理员权限，继续以普通权限运行")
             return False
     return True
 
@@ -231,7 +249,7 @@ class ScriptThread(QThread):
                     time.sleep(self.config['ocr_interval'])
         except Exception as e:
             self.status_updated.emit(f"错误: {str(e)}")
-            print(f"脚本运行错误: {e}")
+            logger.error("脚本运行错误", exc_info=True)
     
     def pause(self):
         self.is_paused = True
@@ -321,8 +339,8 @@ def main():
 if __name__ == "__main__":
     # 检查并请求管理员权限
     if not is_admin():
-        print("检测到程序未以管理员权限运行")
+        logger.info("检测到程序未以管理员权限运行")
         run_as_admin()
     else:
-        print("Delta Force 自动购买脚本 - PyQt6 GUI版本 (管理员模式)")
+        logger.info("Delta Force 自动购买脚本 - PyQt6 GUI版本 (管理员模式)")
         main()

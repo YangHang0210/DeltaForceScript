@@ -3,11 +3,15 @@
 # @Date: 2025-10-04
 # @Description: PyQt6 GUI 监控窗口
 
+import logging
+
 from PyQt6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
                              QLabel, QPushButton, QGroupBox, QTextEdit,
                              QSpinBox, QDoubleSpinBox, QCheckBox)
 from PyQt6.QtCore import Qt, pyqtSignal, QObject
 from PyQt6.QtGui import QFont
+
+logger = logging.getLogger(__name__)
 
 
 class ScriptController(QObject):
@@ -485,10 +489,10 @@ class MonitorWindow(QMainWindow):
         from datetime import datetime
         timestamp = datetime.now().strftime("%H:%M:%S")
         self.log_text.append(f"[{timestamp}] {message}")
-        # 自动滚动到底部
         self.log_text.verticalScrollBar().setValue(
             self.log_text.verticalScrollBar().maximum()
         )
+        logger.info(message)
     
     def on_start_clicked(self):
         """开始按钮点击"""
