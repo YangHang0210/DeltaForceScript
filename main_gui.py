@@ -133,7 +133,9 @@ class ScriptThread(QThread):
     def verify_window(self) -> bool:
         """检查确认按钮区域的颜色是否变化"""
         frame = self.win_cap.capture()
-        while frame is None or frame.size == 0: frame = self.win_cap.capture()
+        while frame is None or frame.size == 0:
+            time.sleep(0.05)
+            frame = self.win_cap.capture()
         region = self.selector.get_region("verify_check")
         # 获取区域中心颜色
         color_tmp = frame[((region[1] + region[3]) // 2), ((region[0] + region[2]) // 2)]
@@ -372,7 +374,6 @@ def main():
             output_color="BGR",
             max_buffer_len=2,
         )
-        win_cap.camera.start(target_fps=30, video_mode=True)
         window.showNormal()
         window.activateWindow()
         window.add_log("✏ 区域配置已保存到 regions_2k.json")

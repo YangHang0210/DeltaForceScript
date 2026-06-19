@@ -24,27 +24,25 @@ def enum_windows_with_title():
     return windows
 
 class WindowCapture():
-    def __init__(self, device_idx: int = 0, output_idx: int = 0, target_fps: int = 30, max_buffer_len: int = 8):
+    def __init__(self, device_idx: int = 0, output_idx: int = 0, max_buffer_len: int = 8):
         """初始化窗口捕获
         
         Args:
             device_idx: 设备索引
             output_idx: 输出屏幕索引（多屏幕时指定）
-            target_fps: 目标帧率
         """
         print(dxcam.device_info())
         print(dxcam.output_info())
         self.device_idx = device_idx
         self.output_idx = output_idx
         self.camera = dxcam.create(device_idx=device_idx, output_idx=output_idx, output_color="BGR", max_buffer_len=max_buffer_len)
-        self.camera.start(target_fps=target_fps, video_mode=True)
 
     def capture(self) -> np.ndarray:
-        img = self.camera.get_latest_frame()
-        return img
+        return self.camera.grab()
 
     def stop(self):
-        self.camera.stop()
+        if self.camera.is_capturing:
+            self.camera.stop()
     
 if __name__ == "__main__":
     wc = WindowCapture()
