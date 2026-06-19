@@ -40,10 +40,12 @@ from window_capture import *
 from region_selector import RegionSelector
 from gui_monitor import MonitorWindow
 
+import cv2
 import numpy
 from paddleocr import PaddleOCR
 from PyQt6.QtWidgets import QApplication
 from PyQt6.QtCore import QThread, pyqtSignal
+from PyQt6.QtGui import QImage, QPixmap
 import pydirectinput
 from colormath.color_objects import sRGBColor, LabColor
 from colormath.color_diff import delta_e_cie2000
@@ -320,10 +322,54 @@ def main():
             script_thread.stop()
             script_thread.wait()
     
+    def on_preview():
+        frame = win_cap.capture()
+        if frame is None or frame.size == 0:
+            window.add_log("截图失败，无法预览")
+            return
+        preview = frame.copy()
+        colors = {
+            "time": (0, 255, 255),
+            "buy": (0, 255, 0),
+            "verify": (0, 165, 255),
+            "refresh": (255, 0, 0),
+            "money": (255, 0, 255),
+            "verify_check": (0, 255, 255),
+        }
+        for name, region in selector.get_all_regions().items():
+            left, top, right, bottom = region
+            color = colors.get(name, (255, 255, 255))
+            cv2.rectangle(preview, (left, top), (right, bottom), color, 2)
+            cv2.putText(preview, name, (left, top - 8),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, color, 2)
+        rgb = cv2.cvtColor(preview, cv2.COLOR_BGR2RGB)
+        h, w, ch = rgb.shape
+        qimg = QImage(rgb.data, w, h, ch * w, QImage.Format.Format_RGB888)
+        window.show_preview(QPixmap.fromImage(qimg))
+
+    def on_redraw(name):
+        all_names = ["time", "buy", "verify", "refresh", "money", "verify_check"]
+        targets = all_names if name == "__all__" else [name]
+        window.showMinimized()
+        app.processEvents()
+        time.sleep(0.3)
+        for region_name in targets:
+            try:
+                selector.select_region(region_name)
+                window.add_log(f"✓ 区域 '{region_name}' 已更新: {selector.get_region(region_name)}")
+            except ValueError:
+                window.add_log(f"✗ 跳过区域 '{region_name}'")
+        selector.save_regions_to_file("regions_2k.json")
+        window.showNormal()
+        window.activateWindow()
+        window.add_log("✏ 区域配置已保存到 regions_2k.json")
+
     window.controller.start_requested.connect(on_start)
     window.controller.pause_requested.connect(on_pause)
     window.controller.resume_requested.connect(on_resume)
     window.controller.stop_requested.connect(on_stop)
+    window.controller.preview_requested.connect(on_preview)
+    window.controller.redraw_requested.connect(on_redraw)
     
     def cleanup():
         if script_thread and script_thread.isRunning():

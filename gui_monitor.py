@@ -7,9 +7,9 @@ import logging
 
 from PyQt6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
                              QLabel, QPushButton, QGroupBox, QTextEdit,
-                             QSpinBox, QDoubleSpinBox, QCheckBox)
+                             QSpinBox, QDoubleSpinBox, QCheckBox, QDialog)
 from PyQt6.QtCore import Qt, pyqtSignal, QObject
-from PyQt6.QtGui import QFont
+from PyQt6.QtGui import QFont, QImage, QPixmap
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +20,8 @@ class ScriptController(QObject):
     stop_requested = pyqtSignal()
     pause_requested = pyqtSignal()
     resume_requested = pyqtSignal()
+    preview_requested = pyqtSignal()
+    redraw_requested = pyqtSignal(str)
 
 
 class MonitorWindow(QMainWindow):
@@ -379,6 +381,40 @@ class MonitorWindow(QMainWindow):
         self.stop_btn.clicked.connect(self.on_stop_clicked)
         button_layout.addWidget(self.stop_btn)
         
+        self.preview_btn = QPushButton("👁 预览区域")
+        self.preview_btn.setFont(QFont("微软雅黑", 11, QFont.Weight.Bold))
+        self.preview_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #673AB7;
+                color: white;
+                border: none;
+                padding: 10px;
+                border-radius: 5px;
+            }
+            QPushButton:hover {
+                background-color: #5E35B1;
+            }
+        """)
+        self.preview_btn.clicked.connect(self.on_preview_clicked)
+        button_layout.addWidget(self.preview_btn)
+        
+        self.redraw_btn = QPushButton("✏ 重画区域")
+        self.redraw_btn.setFont(QFont("微软雅黑", 11, QFont.Weight.Bold))
+        self.redraw_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #00796B;
+                color: white;
+                border: none;
+                padding: 10px;
+                border-radius: 5px;
+            }
+            QPushButton:hover {
+                background-color: #00695C;
+            }
+        """)
+        self.redraw_btn.clicked.connect(self.on_redraw_clicked)
+        button_layout.addWidget(self.redraw_btn)
+        
         main_layout.addLayout(button_layout)
         
         # 添加弹性空间
@@ -533,6 +569,52 @@ class MonitorWindow(QMainWindow):
         self.update_status("已停止")
         self.add_log("⏹ 脚本已停止")
         self.controller.stop_requested.emit()
+
+    def on_preview_clicked(self):
+        """预览区域按钮点击"""
+        self.add_log("👁 正在生成区域预览...")
+        self.controller.preview_requested.emit()
+
+    def on_redraw_clicked(self):
+        """重画区域按钮点击"""
+        region_names = ["time", "buy", "verify", "refresh", "money", "verify_check"]
+        dialog = QDialog(self)
+        dialog.setWindowTitle("选择要重画的区域")
+        layout = QVBoxLayout(dialog)
+        label = QLabel("点击按钮重画对应区域，ESC 取消框选")
+        label.setFont(QFont("微软雅黑", 10))
+        layout.addWidget(label)
+        for name in region_names:
+            btn = QPushButton(name)
+            btn.setFont(QFont("微软雅黑", 11))
+            btn.setStyleSheet("QPushButton { padding: 8px; }")
+            btn.clicked.connect(lambda _, n=name, d=dialog: self._emit_redraw(n, d))
+            layout.addWidget(btn)
+        all_btn = QPushButton("全部重画")
+        all_btn.setFont(QFont("微软雅黑", 11, QFont.Weight.Bold))
+        all_btn.setStyleSheet("QPushButton { padding: 8px; background-color: #FF5722; color: white; }")
+        all_btn.clicked.connect(lambda _, d=dialog: self._emit_redraw("__all__", d))
+        layout.addWidget(all_btn)
+        dialog.exec()
+
+    def _emit_redraw(self, name, dialog):
+        dialog.close()
+        self.add_log(f"✏ 开始重画区域: {name}")
+        self.controller.redraw_requested.emit(name)
+
+    def show_preview(self, pixmap):
+        """显示区域预览对话框"""
+        dialog = QDialog(self)
+        dialog.setWindowTitle("区域预览")
+        layout = QVBoxLayout(dialog)
+        label = QLabel()
+        scaled = pixmap.scaled(1280, 720, Qt.AspectRatioMode.KeepAspectRatio,
+                               Qt.TransformationMode.SmoothTransformation)
+        label.setPixmap(scaled)
+        layout.addWidget(label)
+        dialog.setLayout(layout)
+        dialog.exec()
+        self.add_log("👁 预览已关闭")
     
     def on_complete(self):
         """任务完成"""
