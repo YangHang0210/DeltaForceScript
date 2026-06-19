@@ -350,6 +350,8 @@ def main():
     def on_redraw(name):
         all_names = ["time", "buy", "verify", "refresh", "money", "verify_check"]
         targets = all_names if name == "__all__" else [name]
+        win_cap.stop()
+        del win_cap.camera
         window.showMinimized()
         app.processEvents()
         time.sleep(0.3)
@@ -360,6 +362,14 @@ def main():
             except ValueError:
                 window.add_log(f"✗ 跳过区域 '{region_name}'")
         selector.save_regions_to_file("regions_2k.json")
+        import dxcam
+        win_cap.camera = dxcam.create(
+            device_idx=win_cap.device_idx,
+            output_idx=win_cap.output_idx,
+            output_color="BGR",
+            max_buffer_len=2,
+        )
+        win_cap.camera.start(target_fps=30, video_mode=True)
         window.showNormal()
         window.activateWindow()
         window.add_log("✏ 区域配置已保存到 regions_2k.json")
