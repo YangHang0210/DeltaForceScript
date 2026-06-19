@@ -10,6 +10,14 @@ import re
 import time
 import ctypes
 
+try:
+    ctypes.windll.shcore.SetProcessDpiAwareness(2)
+except Exception:
+    try:
+        ctypes.windll.user32.SetProcessDPIAware()
+    except Exception:
+        pass
+
 from window_capture import *
 from region_selector import RegionSelector
 from gui_monitor import MonitorWindow

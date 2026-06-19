@@ -3,6 +3,15 @@
 # @Date: 2025-10-04
 # @Description: 屏幕区域选择器 - 支持多屏幕蒙版框选
 
+import ctypes
+try:
+    ctypes.windll.shcore.SetProcessDpiAwareness(2)
+except Exception:
+    try:
+        ctypes.windll.user32.SetProcessDPIAware()
+    except Exception:
+        pass
+
 import cv2
 import numpy as np
 from typing import Tuple, Optional, Dict
